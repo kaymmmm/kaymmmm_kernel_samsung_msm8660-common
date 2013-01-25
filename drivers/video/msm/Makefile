@@ -1,3 +1,5 @@
+EXTRA_CFLAGS += -Idrivers/video/msm
+
 obj-y := msm_fb.o
 
 ifeq ($(CONFIG_SAMSUNG_8X60_TABLET),y)
