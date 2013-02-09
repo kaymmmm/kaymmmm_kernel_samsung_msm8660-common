@@ -160,6 +160,7 @@ static struct msm_bus_paths bw_level_tbl[] = {
 	[1] = BW_MBPS(1336), /* At least 167 MHz on bus. */
 	[2] = BW_MBPS(2008), /* At least 251 MHz on bus. */
 	[3] = BW_MBPS(2480), /* At least 310 MHz on bus. */
+	[4] = BW_MBPS(3200), /* At least 400 MHz on bus. */
 };
 
 static struct msm_bus_scale_pdata bus_client_pdata = {
@@ -193,6 +194,7 @@ static struct clkctl_l2_speed l2_freq_tbl_v2[] = {
 	[17] = {1296000,  1, 0x18, 1200000, 1225000, 3},
 	[18] = {1350000,  1, 0x19, 1200000, 1225000, 3},
 	[19] = {1404000,  1, 0x1A, 1200000, 1250000, 3},
+    [20] = {1620000,  1, 0x1E, 1250000, 1275000, 4},
 };
 
 #define L2(x) (&l2_freq_tbl_v2[(x)])
@@ -247,6 +249,11 @@ static struct clkctl_acpu_speed acpu_freq_tbl_1512mhz_slow[] = {
   { {1, 1}, 1404000,  ACPU_SCPLL, 0, 0, 1, 0x1A, L2(19), 1175000, 0x03006000},
   { {1, 1}, 1458000,  ACPU_SCPLL, 0, 0, 1, 0x1B, L2(19), 1200000, 0x03006000},
   { {1, 1}, 1512000,  ACPU_SCPLL, 0, 0, 1, 0x1C, L2(19), 1225000, 0x03006000},
+  { {1, 1}, 1566000,  ACPU_SCPLL, 0, 0, 1, 0x1D, L2(19), 1225000, 0x03006000},
+  { {1, 1}, 1620000,  ACPU_SCPLL, 0, 0, 1, 0x1E, L2(20), 1225000, 0x03006000},
+  { {1, 1}, 1674000,  ACPU_SCPLL, 0, 0, 1, 0x1F, L2(20), 1250000, 0x03006000},
+  { {1, 1}, 1728000,  ACPU_SCPLL, 0, 0, 1, 0x20, L2(20), 1275000, 0x03006000},
+  { {1, 1}, 1782000,  ACPU_SCPLL, 0, 0, 1, 0x21, L2(20), 1300000, 0x03006000},
   { {0, 0}, 0 },
 };
 
@@ -719,8 +726,10 @@ static int acpuclk_8x60_set_rate(int cpu, unsigned long rate,
 	unsigned long flags;
 	int rc = 0;
 
-	if (cpu > num_possible_cpus())
-		return -EINVAL;
+	if (cpu > num_possible_cpus()) {
+		rc = -EINVAL;
+		goto out;
+	}
 
 	if (reason == SETRATE_CPUFREQ || reason == SETRATE_HOTPLUG)
 		mutex_lock(&drv_state.lock);
@@ -995,6 +1004,53 @@ static struct notifier_block __cpuinitdata acpuclock_cpu_notifier = {
 	.notifier_call = acpuclock_cpu_callback,
 };
 
+/* start cmdline_khz */
+
+/* 
+uint32_t acpu_check_khz_value(unsigned long khz)
+{
+	struct clkctl_acpu_speed *f;
+
+	if (khz > MAX_FREQ_X)
+		return MAX_FREQ_X;
+
+	if (khz < MIN_FREQ_X)
+		return MIN_FREQ_X;
+
+	//for (f = acpu_freq_tbl_fast; f->acpuclk_khz != 0; f++) {
+	for (f = acpu_freq_tbl_1512mhz_fast; f->acpuclk_khz !=0; f++) {
+		if (khz < MIN_FREQ_X) {
+			if (f->acpuclk_khz == (khz*1000))
+				return f->acpuclk_khz;
+			if ((khz*1000) > f->acpuclk_khz) {
+				f++;
+				if ((khz*1000) < f->acpuclk_khz) {
+					f--;
+					return f->acpuclk_khz;
+				}
+				f--;
+			}
+		}
+		if (f->acpuclk_khz == khz) {
+			return 1;
+		}
+		if (khz > f->acpuclk_khz) {
+			f++;
+			if (khz < f->acpuclk_khz) {
+				f--;
+				return f->acpuclk_khz;
+			}
+			f--;
+		}
+	}
+
+	return 0;
+}
+
+EXPORT_SYMBOL(acpu_check_khz_value);
+*/
+/* end cmdline_khz */
+
 static __init struct clkctl_acpu_speed *select_freq_plan(void)
 {
 	uint32_t pte_efuse, speed_bin, pvs;
@@ -1106,3 +1162,31 @@ static int __init acpuclk_8x60_init(struct acpuclk_soc_data *soc_data)
 struct acpuclk_soc_data acpuclk_8x60_soc_data __initdata = {
 	.init = acpuclk_8x60_init,
 };
+
+#ifdef CONFIG_VDD_USERSPACE
+ssize_t acpuclk_get_vdd_levels_str(char *buf)
+{
+    int i, len = 0;
+    if (buf) {
+        mutex_lock(&drv_state.lock);
+        for (i = 0; acpu_freq_tbl[i].acpuclk_khz; i++) {
+            len += sprintf(buf + len, "%8u: %4d\n", acpu_freq_tbl[i].acpuclk_khz, acpu_freq_tbl[i].vdd_sc);
+        }
+        mutex_unlock(&drv_state.lock);
+    }
+    return len;
+}
+
+void acpuclk_set_vdd(unsigned int khz, int vdd)
+{
+    int i;
+    mutex_lock(&drv_state.lock);
+    for (i = 0; acpu_freq_tbl[i].acpuclk_khz; i++) {
+        if (khz == 0)
+            acpu_freq_tbl[i].vdd_sc = min(max((unsigned int)(acpu_freq_tbl[i].vdd_sc + vdd), (unsigned int)MIN_VDD_SC), (unsigned int)MAX_VDD_SC);
+        else if (acpu_freq_tbl[i].acpuclk_khz == khz)
+            acpu_freq_tbl[i].vdd_sc = min(max((unsigned int)vdd, (unsigned int)MIN_VDD_SC), (unsigned int)MAX_VDD_SC);
+    }
+    mutex_unlock(&drv_state.lock);
+}
+#endif
