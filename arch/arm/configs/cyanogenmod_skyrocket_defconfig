@@ -676,6 +676,11 @@ CONFIG_CPU_IDLE_GOV_MENU=y
 CONFIG_CPU_FREQ_MSM=y
 
 #
+# Moretz Additions
+#
+CONFIG_VDD_USERSPACE=y
+
+#
 # Floating point emulation
 #
 
