@@ -15,7 +15,7 @@
 #include <mach/msm_iomap.h>
 #include <mach/msm_bus.h>
 #include <linux/ktime.h>
-#include <lunux/cpufreq.h>
+#include <include/linux/cpufreq.h>
 
 #include "kgsl.h"
 #include "kgsl_pwrscale.h"
