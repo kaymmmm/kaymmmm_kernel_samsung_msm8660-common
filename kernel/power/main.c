@@ -16,7 +16,6 @@
 #include "power.h"
 #ifdef CONFIG_SEC_DVFS
 #include <linux/cpufreq.h>
-#include <linux/rq_stats.h>
 #endif
 
 DEFINE_MUTEX(pm_mutex);
@@ -318,11 +317,6 @@ power_attr(wake_unlock);
 #endif
 
 #ifdef CONFIG_SEC_DVFS
-static unsigned int freq_min_apps;
-static unsigned int freq_max_apps;
-static unsigned int freq_min_apps_lock;
-static unsigned int freq_max_apps_lock;
-
 DEFINE_MUTEX(dvfs_mutex);
 static unsigned long dvfs_id = 0;
 static unsigned long apps_min_freq = MIN_FREQ_LIMIT;
