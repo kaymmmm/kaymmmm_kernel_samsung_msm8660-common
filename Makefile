@@ -1,7 +1,7 @@
 VERSION = 3
 PATCHLEVEL = 0
 SUBLEVEL = 62
-EXTRAVERSION =+Moretz-Alpha.3
+EXTRAVERSION =+Moretz-Alpha.4
 NAME = Sneaky Weasel
 
 # *DOCUMENTATION*
