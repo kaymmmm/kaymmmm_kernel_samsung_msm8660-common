@@ -66,7 +66,6 @@ int set_task_ioprio(struct task_struct *task, int ioprio)
 
 	if (!err) {
 		ioc->ioprio = ioprio;
-		ioc->ioprio_changed = 1;
 		wmb();
 		for (i = 0; i < IOC_IOPRIO_CHANGED_BITS; i++)
 			set_bit(i, ioc->ioprio_changed);
