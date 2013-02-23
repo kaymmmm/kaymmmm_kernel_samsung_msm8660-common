@@ -59,6 +59,7 @@ config IOSCHED_SIO
 
 config IOSCHED_BFQ
   tristate "BFQ I/O scheduler"
+  depends on EXPERIMENTAL
   default y
   ---help---
     The BFQ I/O scheduler tries to distribute bandwidth among
