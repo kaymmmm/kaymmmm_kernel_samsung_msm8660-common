@@ -180,6 +180,10 @@ EXPORT_SYMBOL(pm_power_off);
 void (*arm_pm_restart)(char str, const char *cmd) = arm_machine_restart;
 EXPORT_SYMBOL_GPL(arm_pm_restart);
 
+static void do_nothing(void *unused)
+{
+}
+
 /*
  * cpu_idle_wait - Used to ensure that all the CPUs discard old value of
  * pm_idle and update to new pm_idle value. Required while changing pm_idle
