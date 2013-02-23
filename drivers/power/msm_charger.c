@@ -24,6 +24,7 @@
 #include <linux/time.h>
 #include <linux/slab.h>
 #include <linux/wakelock.h>
+#include <linux/fastchg.h>
 
 #include <asm/atomic.h>
 
@@ -1087,6 +1088,8 @@ int msm_charger_notify_event(struct msm_hardware_charger *hw_chg,
 }
 EXPORT_SYMBOL(msm_charger_notify_event);
 
+/* another place to lool ... CvD */
+
 int msm_charger_register(struct msm_hardware_charger *hw_chg)
 {
 	struct msm_hardware_charger_priv *priv;
@@ -1112,7 +1115,12 @@ int msm_charger_register(struct msm_hardware_charger *hw_chg)
 	}
 
 	priv->psy.name = hw_chg->name;
+	/* I wonder if it really is this simple ... CvD */
+#ifdef CONFIG_FORCE_FAST_CHARGE
+	if (hw_chg->type == CHG_TYPE_USB && force_fast_charge == 0) 
+#else
 	if (hw_chg->type == CHG_TYPE_USB)
+#endif
 		priv->psy.type = POWER_SUPPLY_TYPE_USB;
 	else
 		priv->psy.type = POWER_SUPPLY_TYPE_MAINS;

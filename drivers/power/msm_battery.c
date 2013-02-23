@@ -501,6 +501,8 @@ static void msm_batt_update_psy_status(void)
 		battery_status = BATTERY_STATUS_GOOD;
 	}
 
+/* Here's another spot ... CvD */
+
 	if (msm_batt_info.charger_type != charger_type) {
 		if (charger_type == CHARGER_TYPE_USB_WALL ||
 		    charger_type == CHARGER_TYPE_USB_PC ||
