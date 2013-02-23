@@ -717,6 +717,9 @@ CONFIG_IOSCHED_VR=y
 CONFIG_IOSCHED_SIO=y
 # CONFIG_DEFAULT_SIO is not set
 
+CONFIG_IOSCHED_BFQ=y
+# CONFIG_DEFAULT_BFQ is not set
+
 #
 # Floating point emulation
 #
