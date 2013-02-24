@@ -96,7 +96,10 @@ struct io_context *alloc_io_context(gfp_t gfp_flags, int node)
 		INIT_RADIX_TREE(&ret->radix_root, GFP_ATOMIC | __GFP_HIGH);
 		INIT_HLIST_HEAD(&ret->cic_list);
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> parent of 92ca6da... BFQ: typo fix
 		INIT_RADIX_TREE(&ret->bfq_radix_root, GFP_ATOMIC | _GFP_HIGH);
 		INIT_HLIST_HEAD(&ret->bfq_cic_list);
 >>>>>>> parent of 92ca6da... BFQ: typo fix
