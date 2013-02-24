@@ -95,6 +95,11 @@ struct io_context *alloc_io_context(gfp_t gfp_flags, int node)
 		ret->nr_batch_requests = 0; /* because this is 0 */
 		INIT_RADIX_TREE(&ret->radix_root, GFP_ATOMIC | __GFP_HIGH);
 		INIT_HLIST_HEAD(&ret->cic_list);
+<<<<<<< HEAD
+=======
+		INIT_RADIX_TREE(&ret->bfq_radix_root, GFP_ATOMIC | _GFP_HIGH);
+		INIT_HLIST_HEAD(&ret->bfq_cic_list);
+>>>>>>> parent of 92ca6da... BFQ: typo fix
 		ret->ioc_data = NULL;
 #if defined(CONFIG_BLK_CGROUP) || defined(CONFIG_BLK_CGROUP_MODULE)
 		ret->cgroup_changed = 0;
