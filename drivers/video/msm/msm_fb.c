@@ -52,16 +52,6 @@
 #include "mdp.h"
 #include "mdp4.h"
 
-#ifdef CONFIG_FB_MSM_LOGO
-#define INIT_IMAGE_FILE "/initlogo.rle"
-extern int load_565rle_image(char *filename, bool bf_supported);
-#define LPM_INIT_IMAGE_FILE "/lpminitlogo.rle"
-#if (defined(CONFIG_TARGET_SERIES_P5LTE) || defined(CONFIG_TARGET_SERIES_P8LTE)) && defined(CONFIG_TARGET_LOCALE_KOR)
-#define CHARGING_IMAGE_FILE "/charging_image.rle"
-#endif
-extern unsigned int is_lpcharging_state(void);
-#endif
-
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MSM_FB_NUM	3
 #endif
@@ -1393,27 +1383,7 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	var->yres_virtual = panel_info->yres * mfd->fb_page +
 		((PAGE_SIZE - remainder)/fix->line_length) * mfd->fb_page;
 	var->bits_per_pixel = bpp * 8;	/* FrameBuffer color depth */
-	if (mfd->dest == DISPLAY_LCD) {
-		if (panel_info->type == MDDI_PANEL && panel_info->mddi.is_type1)
-			var->reserved[4] = panel_info->lcd.refx100 / (100 * 2);
-		else
-			var->reserved[4] = panel_info->lcd.refx100 / 100;
-	} else {
-		if (panel_info->type == MIPI_VIDEO_PANEL) {
-			var->reserved[4] = panel_info->mipi.frame_rate;
-		} else {
-			var->reserved[4] = panel_info->clk_rate /
-				((panel_info->lcdc.h_back_porch +
-				  panel_info->lcdc.h_front_porch +
-				  panel_info->lcdc.h_pulse_width +
-				  panel_info->xres) *
-				 (panel_info->lcdc.v_back_porch +
-				  panel_info->lcdc.v_front_porch +
-				  panel_info->lcdc.v_pulse_width +
-				  panel_info->yres));
-		}
-	}
-	pr_debug("reserved[4] %u\n", var->reserved[4]);
+	var->reserved[3] = mdp_get_panel_framerate(mfd);
 
 		/*
 		 * id field for fb app
@@ -3505,7 +3475,8 @@ static int msmfb_notify_update(struct fb_info *info, unsigned long *argp)
 	return (ret > 0) ? 0 : ret;
 }
 
-static int msmfb_handle_pp_ioctl(struct msmfb_mdp_pp *pp_ptr)
+static int msmfb_handle_pp_ioctl(struct msm_fb_data_type *mfd,
+					struct msmfb_mdp_pp *pp_ptr)
 {
 	int ret = -1;
 #ifdef CONFIG_FB_MSM_MDP40
@@ -3561,6 +3532,10 @@ static int msmfb_handle_pp_ioctl(struct msmfb_mdp_pp *pp_ptr)
 						&pp_ptr->data.qseed_cfg_data);
 		break;
 #endif
+	case mdp_bl_scale_cfg:
+		ret = mdp_bl_scale_config(mfd, (struct mdp_bl_scale_data *)
+						&pp_ptr->data.bl_scale_data);
+		break;
 	default:
 		pr_warn("Unsupported request to MDP_PP IOCTL.\n");
 		ret = -EINVAL;
@@ -3753,6 +3728,24 @@ static int msmfb_display_commit(struct fb_info *info,
 	}
 	return ret;
 }
+
+static int msmfb_get_metadata(struct msm_fb_data_type *mfd,
+				struct msmfb_metadata *metadata_ptr)
+{
+	int ret = 0;
+	switch (metadata_ptr->op) {
+	case metadata_op_frame_rate:
+		metadata_ptr->data.panel_frame_rate =
+			mdp_get_panel_framerate(mfd);
+		break;
+	default:
+		pr_warn("Unsupported request to MDP META IOCTL.\n");
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
+}
+
 static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			unsigned long arg)
 {
@@ -4071,7 +4064,7 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		if (ret)
 			goto msm_fb_ioctl_exit;
 
-		ret = msmfb_handle_pp_ioctl(&mdp_pp);
+		ret = msmfb_handle_pp_ioctl(mfd, &mdp_pp);
 		break;
 	case MSMFB_BUFFER_SYNC:
 		ret = copy_from_user(&buf_sync, argp, sizeof(buf_sync));
@@ -4086,6 +4079,17 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 
 	case MSMFB_DISPLAY_COMMIT:
 		ret = msmfb_display_commit(info, argp);
+		break;
+
+	case MSMFB_METADATA_GET:
+		ret = copy_from_user(&mdp_metadata, argp, sizeof(mdp_metadata));
+		if (ret)
+			return ret;
+		ret = msmfb_get_metadata(mfd, &mdp_metadata);
+		if (!ret)
+			ret = copy_to_user(argp, &mdp_metadata,
+				sizeof(mdp_metadata));
+
 		break;
 
 	default:
