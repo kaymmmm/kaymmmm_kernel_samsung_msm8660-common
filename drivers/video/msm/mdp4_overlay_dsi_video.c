@@ -282,8 +282,6 @@ int mdp4_dsi_video_pipe_commit(int cndx, int wait)
 	return cnt;
 }
 
-<<<<<<< HEAD
-=======
 static void mdp4_video_vsync_irq_ctrl(int cndx, int enable)
 {
 	struct vsycn_ctrl *vctrl;
