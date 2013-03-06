@@ -854,7 +854,7 @@ static void cpu_up_work(struct work_struct *work)
 
 static void cpu_down_work(struct work_struct *work)
 {
-	int cpu;
+	//int cpu;
 	int online = num_online_cpus();
 	int nr_down = 1;
 	int hotplug_lock = atomic_read(&g_hotplug_lock);
@@ -1263,11 +1263,11 @@ static int pm_notifier_call(struct notifier_block *this,
 	}
 	return NOTIFY_DONE;
 }
-
+/*
 static struct notifier_block pm_notifier = {
 	.notifier_call = pm_notifier_call,
 };
-
+*/
 static int reboot_notifier_call(struct notifier_block *this,
 				unsigned long code, void *_cmd)
 {
