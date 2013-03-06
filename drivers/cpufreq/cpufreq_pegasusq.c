@@ -192,7 +192,7 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 static
 #endif
 struct cpufreq_governor cpufreq_gov_pegasusq = {
-	.name                   = "pegasusq",
+	.name                   = "Pegasusq",
 	.governor               = cpufreq_governor_dbs,
 	.owner                  = THIS_MODULE,
 };
@@ -822,7 +822,7 @@ static struct attribute *dbs_attributes[] = {
 
 static struct attribute_group dbs_attr_group = {
 	.attrs = dbs_attributes,
-	.name = "pegasusq",
+	.name = "Pegasusq",
 };
 
 /************************** sysfs end ************************/

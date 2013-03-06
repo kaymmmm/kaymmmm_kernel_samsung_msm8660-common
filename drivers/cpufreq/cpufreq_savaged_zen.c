@@ -574,7 +574,7 @@ static struct attribute * savagedzen_attributes[] = {
 
 static struct attribute_group savagedzen_attr_group = {
         .attrs = savagedzen_attributes,
-        .name = "savagedzen",
+        .name = "SavagedZen",
 };
 
 static int cpufreq_governor_savagedzen(struct cpufreq_policy *new_policy,

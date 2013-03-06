@@ -94,7 +94,7 @@ static int cpufreq_governor_bds(struct cpufreq_policy *policy,
 static
 #endif
 struct cpufreq_governor cpufreq_gov_badass = {
-       .name                   = "badass",
+       .name                   = "Badass",
        .governor               = cpufreq_governor_bds,
        .max_transition_latency = TRANSITION_LATENCY_LIMIT,
        .owner                  = THIS_MODULE,
@@ -796,7 +796,7 @@ static struct attribute *bds_attributes[] = {
 
 static struct attribute_group bds_attr_group = {
 	.attrs = bds_attributes,
-	.name = "badass",
+	.name = "Badass",
 };
 
 /************************** sysfs end ************************/
