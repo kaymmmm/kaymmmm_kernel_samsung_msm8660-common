@@ -314,7 +314,7 @@ static struct attribute *dbs_attributes[] = {
 
 static struct attribute_group dbs_attr_group = {
 	.attrs = dbs_attributes,
-	.name = "conservative",
+	.name = "Conservative",
 };
 
 /************************** sysfs end ************************/
@@ -529,7 +529,7 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 			}
 
 			/*
-			 * conservative does not implement micro like ondemand
+			 * Conservative does not implement micro like ondemand
 			 * governor, thus we are bound to jiffes/HZ
 			 */
 			min_sampling_rate =
@@ -595,7 +595,7 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 static
 #endif
 struct cpufreq_governor cpufreq_gov_conservative = {
-	.name			= "conservative",
+	.name			= "Conservative",
 	.governor		= cpufreq_governor_dbs,
 	.max_transition_latency	= TRANSITION_LATENCY_LIMIT,
 	.owner			= THIS_MODULE,
