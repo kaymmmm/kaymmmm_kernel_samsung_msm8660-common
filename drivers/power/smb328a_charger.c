@@ -1277,7 +1277,6 @@ static int smb328a_enable_charging(struct i2c_client *client)
 			chip->chg_mode == CHG_MODE_UNKNOWN)
 			data = 0xad;
 		else if (chip->chg_mode == CHG_MODE_USB)
-	/* breadcrumb - fastcharge - CvD */
 			data = 0xa9;
 		else
 			data = 0xb9;

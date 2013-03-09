@@ -134,13 +134,6 @@
 static struct platform_device ion_dev;
 #endif
 
-#ifdef CONFIG_FREQ_CPU_GOV_BADASS_2_PHASE
-	int set_two_phase_freq_badass(int cpufreq);
-#endif
-#ifdef CONFIG_FREQ_CPU_GOV_BADASS_3_PHASE
-        int set_three_phase_freq_badass(int cpufreq);
-#endif
-
 enum {
 	GPIO_EXPANDER_IRQ_BASE  = PM8901_IRQ_BASE + NR_PMIC8901_IRQS,
 	GPIO_EXPANDER_GPIO_BASE = PM8901_MPP_BASE + PM8901_MPPS,
@@ -10389,13 +10382,6 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 	/* CPU frequency control is not supported on simulated targets. */
 	if (!machine_is_msm8x60_rumi3() && !machine_is_msm8x60_sim())
 		acpuclk_init(&acpuclk_8x60_soc_data);
-
-#ifdef CONFIG_FREQ_CPU_GOV_BADASS_2_PHASE
-	set_two_phase_freq_badass(CONFIG_CPU_FREQ_GOV_BADASS_2_PHASE_FREQ);
-#endif
-#ifdef CONFIG_FREQ_CPU_GOV_BADASS_3_PHASE
-        set_three_phase_freq_badass(CONFIG_CPU_FREQ_GOV_BADASS_3_PHASE_FREQ);
-#endif
 
 	/*
 	 * Enable EBI2 only for boards which make use of it. Leave

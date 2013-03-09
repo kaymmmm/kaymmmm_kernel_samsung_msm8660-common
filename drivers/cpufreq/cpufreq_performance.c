@@ -37,7 +37,7 @@ static int cpufreq_governor_performance(struct cpufreq_policy *policy,
 static
 #endif
 struct cpufreq_governor cpufreq_gov_performance = {
-	.name		= "Performance",
+	.name		= "performance",
 	.governor	= cpufreq_governor_performance,
 	.owner		= THIS_MODULE,
 };

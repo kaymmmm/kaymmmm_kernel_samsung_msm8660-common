@@ -14,11 +14,6 @@ hwpoison.txt
 	- explains what hwpoison is
 ksm.txt
 	- how to use the Kernel Samepage Merging feature.
-<<<<<<< HEAD
-uksm.txt
-	- Introduction to Ultra KSM
-=======
->>>>>>> parent of 6ec3a7b... Clearing out some stuff I don't use.
 locking
 	- info on how locking and synchronization is done in the Linux vm code.
 map_hugetlb.c

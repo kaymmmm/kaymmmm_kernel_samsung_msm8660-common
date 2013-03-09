@@ -339,7 +339,7 @@ static int verify_cpufreq_target(unsigned int target)
 	{
 		if (table[i].frequency < MIN_FREQ_LIMIT || table[i].frequency > MAX_FREQ_LIMIT)
 			continue;
-
+		
 		if (target == table[i].frequency)
 			return 0;
 	}
@@ -356,7 +356,7 @@ int set_freq_limit(unsigned long id, unsigned int freq)
 
 	if (id < 0)
 		return -EINVAL;
-
+	
 	if (freq != 0 && freq != -1 && verify_cpufreq_target(freq))
 		return -EINVAL;
 
@@ -411,7 +411,7 @@ int set_freq_limit(unsigned long id, unsigned int freq)
 			{
 				struct cpufreq_policy policy;
 				policy.cpu = cpu;
-
+				
 				if (cur < min)
 					cpufreq_driver_target(&policy, min, CPUFREQ_RELATION_H);
 				else if (cur > max)
@@ -419,7 +419,7 @@ int set_freq_limit(unsigned long id, unsigned int freq)
 			}
 		}
 	}
-
+	
 	mutex_unlock(&dvfs_mutex);	
 
 	return 0;
@@ -442,7 +442,7 @@ static ssize_t cpufreq_min_limit_store(struct kobject *kobj,
 					const char *buf, size_t n)
 {
 	int freq_min_limit;
-
+	
 	sscanf(buf, "%d", &freq_min_limit);
 
 	set_freq_limit(DVFS_APPS_MIN_ID, freq_min_limit);
@@ -463,7 +463,7 @@ static ssize_t cpufreq_max_limit_show(struct kobject *kobj,
 	freq = get_max_lock();
 	if (!freq)
 		freq = -1;
-
+	
 	return sprintf(buf, "%d\n", freq);
 }
 
@@ -476,7 +476,7 @@ static ssize_t cpufreq_max_limit_store(struct kobject *kobj,
 	sscanf(buf, "%d", &freq_max_limit);
 
 	set_freq_limit(DVFS_APPS_MAX_ID, freq_max_limit);
-
+	
 	return n;
 }
 static ssize_t cpufreq_table_show(struct kobject *kobj,

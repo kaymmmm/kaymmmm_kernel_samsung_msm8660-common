@@ -217,6 +217,24 @@ static void def_work_fn(struct work_struct *work)
 	sysfs_notify(rq_info.kobj, NULL, "def_timer_ms");
 }
 
+#ifdef CONFIG_MSM_MPDEC
+unsigned int get_rq_info(void)
+{
+unsigned long flags = 0;
+        unsigned int rq = 0;
+
+        spin_lock_irqsave(&rq_lock, flags);
+
+        rq = rq_info.rq_avg;
+        rq_info.rq_avg = 0;
+
+        spin_unlock_irqrestore(&rq_lock, flags);
+
+        return rq;
+}
+EXPORT_SYMBOL(get_rq_info);
+#endif
+
 #ifdef CONFIG_SEC_DVFS_DUAL
 static int stall_mpdecision = 0;
 
@@ -241,7 +259,7 @@ static void dvfs_hotplug_callback(struct work_struct *unused)
 	{
 		ssize_t ret;
 		struct sys_device *cpu_sys_dev;
-
+	
 		ret = cpu_up(NON_BOOT_CPU); // it takes 60ms
 		if (!ret)
 		{
@@ -271,7 +289,7 @@ void dual_boost(unsigned int boost_on)
 		{
 			ssize_t ret;
 			struct sys_device *cpu_sys_dev;
-
+		
 			ret = cpu_up(NON_BOOT_CPU); // it takes 60ms
 			if (!ret)
 			{
@@ -308,7 +326,7 @@ void dual_boost(unsigned int boost_on)
 			}
 			cpu_hotplug_driver_unlock();
 		}
-
+		
 		is_dual_locked = 0;
 	}
 }

@@ -14,7 +14,9 @@
 #include <linux/pm_runtime.h>
 #include <mach/msm_iomap.h>
 #include <mach/msm_bus.h>
+#include <linux/cpufreq.h>
 #include <linux/ktime.h>
+
 
 #include "kgsl.h"
 #include "kgsl_pwrscale.h"
@@ -29,6 +31,10 @@
 #define GPU_SWFI_LATENCY	3
 #define UPDATE_BUSY_VAL		1000000
 #define UPDATE_BUSY		50
+
+#ifdef CONFIG_CPU_FREQ_GOV_BADASS_GPU_CONTROL
+extern bool gpu_busy_state;
+#endif
 
 struct clk_pair {
 	const char *name;
@@ -352,9 +358,9 @@ DEVICE_ATTR(max_gpuclk, 0644, kgsl_pwrctrl_max_gpuclk_show,
 DEVICE_ATTR(pwrnap, 0664, kgsl_pwrctrl_pwrnap_show, kgsl_pwrctrl_pwrnap_store);
 DEVICE_ATTR(idle_timer, 0644, kgsl_pwrctrl_idle_timer_show,
 	kgsl_pwrctrl_idle_timer_store);
-DEVICE_ATTR(gpubusy, 0644, kgsl_pwrctrl_gpubusy_show,
+DEVICE_ATTR(gpubusy, 0444, kgsl_pwrctrl_gpubusy_show,
 	NULL);
-DEVICE_ATTR(gputop, 0644, kgsl_pwrctrl_gputop_show,
+DEVICE_ATTR(gputop, 0444, kgsl_pwrctrl_gputop_show,
 	NULL);
 
 static const struct device_attribute *pwrctrl_attr_list[] = {
@@ -408,6 +414,15 @@ static void kgsl_pwrctrl_busy_time(struct kgsl_device *device, bool on_time)
 		!test_bit(KGSL_PWRFLAGS_AXI_ON, &device->pwrctrl.power_flags)) {
 		update_statistics(device);
 	}
+
+
+#ifdef CONFIG_CPU_FREQ_GOV_BADASS_GPU_CONTROL
+	if (on_time)
+		gpu_busy_state = true;
+	else
+		gpu_busy_state = false;
+#endif
+
 }
 
 void kgsl_pwrctrl_clk(struct kgsl_device *device, int state,
@@ -576,7 +591,6 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 	pwr->num_pwrlevels = pdata->num_levels;
 	pwr->active_pwrlevel = pdata->init_level;
 	pwr->default_pwrlevel = pdata->init_level;
-	pwr->thermal_pwrlevel = pdata->max_level;
 	for (i = 0; i < pdata->num_levels; i++) {
 		pwr->pwrlevels[i].gpu_freq =
 		(pdata->pwrlevel[i].gpu_freq > 0) ?

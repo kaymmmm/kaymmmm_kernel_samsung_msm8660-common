@@ -68,7 +68,7 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 static
 #endif
 struct cpufreq_governor cpufreq_gov_wheatley = {
-    .name                   = "Wheatley",
+    .name                   = "wheatley",
     .governor               = cpufreq_governor_dbs,
     .max_transition_latency = TRANSITION_LATENCY_LIMIT,
     .owner                  = THIS_MODULE,
@@ -270,62 +270,6 @@ show_one(powersave_bias, powersave_bias);
 show_one(target_residency, target_residency);
 show_one(allowed_misses, allowed_misses);
 
-/**
- * update_sampling_rate - update sampling rate effective immediately if needed.
- * @new_rate: new sampling rate
- *
- * If new rate is smaller than the old, simply updaing
- * dbs_tuners_int.sampling_rate might not be appropriate. For example,
- * if the original sampling_rate was 1 second and the requested new sampling
- * rate is 10 ms because the user needs immediate reaction from ondemand
- * governor, but not sure if higher frequency will be required or not,
- * then, the governor may change the sampling rate too late; up to 1 second
- * later. Thus, if we are reducing the sampling rate, we need to make the
- * new value effective immediately.
- */
-static void update_sampling_rate(unsigned int new_rate)
-{
-	int cpu;
-
-	dbs_tuners_ins.sampling_rate = new_rate
-				     = max(new_rate, min_sampling_rate);
-
-	for_each_online_cpu(cpu) {
-		struct cpufreq_policy *policy;
-		struct cpu_dbs_info_s *dbs_info;
-		unsigned long next_sampling, appointed_at;
-
-		policy = cpufreq_cpu_get(cpu);
-		if (!policy)
-			continue;
-		dbs_info = &per_cpu(od_cpu_dbs_info, policy->cpu);
-		cpufreq_cpu_put(policy);
-
-		mutex_lock(&dbs_info->timer_mutex);
-
-		if (!delayed_work_pending(&dbs_info->work)) {
-			mutex_unlock(&dbs_info->timer_mutex);
-			continue;
-		}
-
-		next_sampling  = jiffies + usecs_to_jiffies(new_rate);
-		appointed_at = dbs_info->work.timer.expires;
-
-
-		if (time_before(next_sampling, appointed_at)) {
-
-			mutex_unlock(&dbs_info->timer_mutex);
-			cancel_delayed_work_sync(&dbs_info->work);
-			mutex_lock(&dbs_info->timer_mutex);
-
-			schedule_delayed_work_on(dbs_info->cpu, &dbs_info->work,
-						 usecs_to_jiffies(new_rate));
-
-		}
-		mutex_unlock(&dbs_info->timer_mutex);
-	}
-}
-
 static ssize_t store_sampling_rate(struct kobject *a, struct attribute *b,
 				   const char *buf, size_t count)
 {
@@ -334,7 +278,7 @@ static ssize_t store_sampling_rate(struct kobject *a, struct attribute *b,
     ret = sscanf(buf, "%u", &input);
     if (ret != 1)
 	return -EINVAL;
-	update_sampling_rate(input);
+    dbs_tuners_ins.sampling_rate = max(input, min_sampling_rate);
     return count;
 }
 
@@ -489,7 +433,7 @@ static struct attribute *dbs_attributes[] = {
 
 static struct attribute_group dbs_attr_group = {
     .attrs = dbs_attributes,
-    .name = "Wheatley",
+    .name = "wheatley",
 };
 
 /************************** sysfs end ************************/
@@ -507,11 +451,7 @@ static void dbs_freq_increase(struct cpufreq_policy *p, unsigned int freq)
 
 static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 {
-	/* Extrapolated load of this CPU */
-	unsigned int load_at_max_freq = 0;
     unsigned int max_load_freq;
-    /* Current load across this CPU */
-	unsigned int cur_load = 0;
 
     struct cpufreq_policy *policy;
     unsigned int j;
@@ -522,28 +462,18 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
     policy = this_dbs_info->cur_policy;
 
     /*
-     * Every sampling_rate, we calculate the relative load (percentage of 
-     * time spend outside of idle) and the usage and average residency of 
-     * the highest C-state during the last sampling interval.
+     * Every sampling_rate, we check, if current idle time is less
+     * than 20% (default), then we try to increase frequency
+     * Every sampling_rate, we look for a the lowest
+     * frequency which can sustain the load while keeping idle time over
+     * 30%. If such a frequency exist, we try to decrease to this frequency.
      *
-     * If the highest C-state has been used and the average residency is
-     * greater or equal the user-defined target_residency or the relative 
-     * load is above up_threshold percent, we increase the frequency to 
-     * maximum (or stay there if we already are at maximum).
-     *
-     * If the highest C-state has not been used or the average residency
-     * too low, we note that and if it happens more than allowed_misses
-     * times in a row, we look for a the lowest frequency which can sustain
-     * the current load with a relative load value below (up_threshold - 
-     * down_differential) percent. If such a frequency exists, we decrease
-     * to this frequency.
+     * Any frequency increase takes it to the maximum frequency.
+     * Frequency reduction happens at minimum steps of
+     * 5% (default) of current frequency
      */
 
-    /* 
-     * Get load (in terms of the current frequency)
-     * and usage and average residency of the highest C-state 
-     */
-
+    /* Get Absolute Load - in terms of freq */
     max_load_freq = 0;
     total_idletime = 0;
     total_usage = 0;
@@ -552,7 +482,7 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 	struct cpu_dbs_info_s *j_dbs_info;
 	cputime64_t cur_wall_time, cur_idle_time, cur_iowait_time;
 	unsigned int idle_time, wall_time, iowait_time;
-	unsigned int load_freq;
+	unsigned int load, load_freq;
 	int freq_avg;
 	struct cpuidle_device * j_cpuidle_dev = NULL;
 	struct cpuidle_state * deepidle_state = NULL;
@@ -605,19 +535,15 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 	if (unlikely(!wall_time || wall_time < idle_time))
 	    continue;
 
-	cur_load = 100 * (wall_time - idle_time) / wall_time;
+	load = 100 * (wall_time - idle_time) / wall_time;
 
 	freq_avg = __cpufreq_driver_getavg(policy, j);
 	if (freq_avg <= 0)
 	    freq_avg = policy->cur;
 
-	load_freq = cur_load * freq_avg;
-		if (load_freq > max_load_freq)
-			max_load_freq = load_freq;
-	
-	/* calculate the scaled load across CPU */
-	load_at_max_freq += (cur_load * policy->cur) /
-		policy->cpuinfo.max_freq;
+	load_freq = load * freq_avg;
+	if (load_freq > max_load_freq)
+	    max_load_freq = load_freq;
 
 	j_cpuidle_dev = per_cpu(cpuidle_devices, j);
 
@@ -644,8 +570,6 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 	    num_misses++;
     }
 
-	cpufreq_notify_utilization(policy, load_at_max_freq);
-	
     /* Check for frequency increase */
     if (max_load_freq > dbs_tuners_ins.up_threshold * policy->cur 
 	|| num_misses <= dbs_tuners_ins.allowed_misses) {
@@ -665,8 +589,7 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
     /*
      * The optimal frequency is the frequency that is the lowest that
      * can support the current CPU usage without triggering the up
-     * policy. To be safe, we focus down_differential points under the 
-     * threshold.
+     * policy. To be safe, we focus 10 points under the threshold.
      */
     if (max_load_freq <
 	(dbs_tuners_ins.up_threshold - dbs_tuners_ins.down_differential) *
@@ -869,10 +792,11 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 
 static int __init cpufreq_gov_dbs_init(void)
 {
+    cputime64_t wall;
     u64 idle_time;
     int cpu = get_cpu();
 
-    idle_time = get_cpu_idle_time_us(cpu, NULL);
+    idle_time = get_cpu_idle_time_us(cpu, &wall);
     put_cpu();
     if (idle_time != -1ULL) {
 	/* Idle micro accounting is supported. Use finer thresholds */

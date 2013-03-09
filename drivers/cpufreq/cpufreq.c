@@ -29,6 +29,7 @@
 #include <linux/completion.h>
 #include <linux/mutex.h>
 #include <linux/syscore_ops.h>
+#include <linux/cpugovsync.h>
 
 #include <trace/events/power.h>
 #include <linux/semaphore.h>
@@ -519,20 +520,37 @@ static ssize_t store_scaling_governor(struct cpufreq_policy *policy,
 	policy->user_policy.policy = policy->policy;
 	policy->user_policy.governor = policy->governor;
 
-	sysfs_notify(&policy->kobj, NULL, "scaling_governor");
+	/* allow the user to force governor changes from one core to apply to the other */
+#ifdef CONFIG_LINK_CPU_GOVERNORS
+	if (force_cpu_gov_sync != 0) {
+		ret = cpufreq_get_policy(&new_policy, policy->cpu ? 0 : 1);
+		if(!ret) {
+			struct cpufreq_policy* cpu_alt=cpufreq_cpu_get(policy->cpu ? 0 : 1);
+			if (cpu_alt != NULL) {
+				cpufreq_parse_governor(str_governor, &new_policy.policy,
+				&new_policy.governor);
+				__cpufreq_set_policy(cpu_alt, &new_policy);
+				cpu_alt->user_policy.policy = cpu_alt->policy;
+				cpu_alt->user_policy.governor = cpu_alt->governor;
+				cpufreq_cpu_put(cpu_alt);
+			}
+		}
+	}
+#endif
+		sysfs_notify(&policy->kobj, NULL, "scaling_governor");
 
-	snprintf(buf1, sizeof(buf1), "GOV=%s", policy->governor->name);
-	snprintf(buf2, sizeof(buf2), "CPU=%u", policy->cpu);
-	envp[0] = buf1;
-	envp[1] = buf2;
-	envp[2] = NULL;
-	kobject_uevent_env(cpufreq_global_kobject, KOBJ_ADD, envp);
+		snprintf(buf1, sizeof(buf1), "GOV=%s", policy->governor->name);
+		snprintf(buf2, sizeof(buf2), "CPU=%u", policy->cpu);
+		envp[0] = buf1;
+		envp[1] = buf2;
+		envp[2] = NULL;
+		kobject_uevent_env(cpufreq_global_kobject, KOBJ_ADD, envp);
 
-	if (ret)
-		return ret;
-	else
-		return count;
-}
+		if (ret)
+			return ret;
+		else
+			return count;
+	}
 
 /**
  * show_scaling_driver - show the cpufreq driver currently loaded
@@ -643,59 +661,6 @@ static ssize_t show_bios_limit(struct cpufreq_policy *policy, char *buf)
 	return sprintf(buf, "%u\n", policy->cpuinfo.max_freq);
 }
 
-#ifdef CONFIG_VDD_USERSPACE
-extern ssize_t acpuclk_get_vdd_levels_str(char *buf);
-static ssize_t show_vdd_levels(struct cpufreq_policy *policy, char *buf)
-{
-	return acpuclk_get_vdd_levels_str(buf);
-}
-
-extern void acpuclk_set_vdd(unsigned acpu_khz, int vdd);
-static ssize_t store_vdd_levels(struct cpufreq_policy *policy, const char *buf, size_t count)
-{
-	int i = 0, j;
-	int pair[2] = { 0, 0 };
-	int sign = 0;
-	if (count < 1)
-		return 0;
-	if (buf[0] == '-') {
-		sign = -1;
-		i++;
-	}
-	else if (buf[0] == '+') {
-		sign = 1;
-		i++;
-	}
-	for (j = 0; i < count; i++) {
-		char c = buf[i];
-		if ((c >= '0') && (c <= '9')) {
-			pair[j] *= 10;
-			pair[j] += (c - '0');
-		}
-		else if ((c == ' ') || (c == '\t')) {
-			if (pair[j] != 0) {
-				j++;
-				if ((sign != 0) || (j > 1))
-					break;
-			}
-		}
-		else
-			break;
-	}
-	if (sign != 0) {
-		if (pair[0] > 0)
-			acpuclk_set_vdd(0, sign * pair[0]);
-	}
-	else {
-		if ((pair[0] > 0) && (pair[1] > 0))
-			acpuclk_set_vdd((unsigned)pair[0], pair[1]);
-		else
-			return -EINVAL;
-	}
-	return count;
-}
-#endif
-
 cpufreq_freq_attr_ro_perm(cpuinfo_cur_freq, 0400);
 cpufreq_freq_attr_ro(cpuinfo_min_freq);
 cpufreq_freq_attr_ro(cpuinfo_max_freq);
@@ -712,10 +677,6 @@ cpufreq_freq_attr_rw(scaling_max_freq);
 cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
 
-#ifdef CONFIG_VDD_USERSPACE
-cpufreq_freq_attr_rw(vdd_levels);
-#endif
-
 static struct attribute *default_attrs[] = {
 	&cpuinfo_min_freq.attr,
 	&cpuinfo_max_freq.attr,
@@ -729,9 +690,6 @@ static struct attribute *default_attrs[] = {
 	&scaling_driver.attr,
 	&scaling_available_governors.attr,
 	&scaling_setspeed.attr,
-#ifdef CONFIG_VDD_USERSPACE
-    &vdd_levels.attr,
-#endif
 	NULL
 };
 

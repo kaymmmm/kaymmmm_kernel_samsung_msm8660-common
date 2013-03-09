@@ -188,7 +188,7 @@ static int cpufreq_governor_userspace(struct cpufreq_policy *policy,
 static
 #endif
 struct cpufreq_governor cpufreq_gov_userspace = {
-	.name		= "Userspace",
+	.name		= "userspace",
 	.governor	= cpufreq_governor_userspace,
 	.store_setspeed	= cpufreq_set,
 	.show_setspeed	= show_speed,

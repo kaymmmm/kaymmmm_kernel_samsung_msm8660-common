@@ -85,6 +85,7 @@ config ARCH_MSM8X60
 	select MSM_RPM_REGULATOR
 	select MSM_V2_TLMM
 	select MSM_PIL
+	select ARCH_HAS_CPU_IDLE_WAIT
 	select MSM_DIRECT_SCLK_ACCESS
 	select MSM_RPM
 	select MSM_XO
@@ -1343,6 +1344,14 @@ config MSM_DALRPC_TEST
 	default m
 	help
 	  Exercises DAL RPC calls to QDSP6.
+
+config MSM_MPDEC
+	bool "Enable kernel based mpdecision"
+	depends on MSM_SMP
+	default n
+	help
+	  This enables kernel based multi core control.
+	  (up/down hotplug based on load)
 
 if CPU_FREQ_MSM
 
